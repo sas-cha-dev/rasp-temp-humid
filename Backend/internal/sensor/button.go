@@ -1,0 +1,145 @@
+package sensor
+
+import (
+	"context"
+	"fmt"
+	"math/rand/v2"
+	"sync"
+	"time"
+)
+
+type ButtonState string
+
+const (
+	ButtonStateUnknown ButtonState = "unknown"
+	ButtonStateOpen    ButtonState = "open"
+	ButtonStateClosed  ButtonState = "closed"
+)
+
+var allBtnStates = []ButtonState{ButtonStateOpen, ButtonStateClosed}
+
+type ButtonService interface {
+	GetCurrentState() (*ButtonState, error)
+	OnPush(fn func(state ButtonState) error) error
+	OnRelease(fn func(state ButtonState) error) error
+	Close() error
+}
+
+type DummyButtonService struct {
+	gpioPin      int
+	onPush       []func(state ButtonState) error
+	onRelease    []func(state ButtonState) error
+	currentState ButtonState
+
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+}
+
+func NewDummyButtonService(gpioPin int) *DummyButtonService {
+	ctx, cancel := context.WithCancel(context.Background())
+	return &DummyButtonService{
+		gpioPin:      gpioPin,
+		onPush:       make([]func(state ButtonState) error, 0),
+		onRelease:    make([]func(state ButtonState) error, 0),
+		currentState: ButtonStateUnknown,
+		ctx:          ctx,
+		cancel:       cancel,
+	}
+}
+
+// Start begins listening to button state changes
+func (s *DummyButtonService) Start(rate time.Duration) error {
+	s.wg.Add(1)
+	go s.listenToButton(rate)
+	return nil
+}
+
+func (s *DummyButtonService) listenToButton(rate time.Duration) {
+	defer s.wg.Done()
+
+	ticker := time.NewTicker(rate)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-ticker.C:
+			newState, err := s.readState()
+			if err != nil {
+				continue
+			}
+
+			s.mu.Lock()
+			previousState := s.currentState
+			s.currentState = newState
+			s.mu.Unlock()
+
+			// Detect state changes and trigger callbacks
+			if previousState != newState {
+				s.handleStateChange(previousState, newState)
+			}
+		}
+	}
+}
+
+func (s *DummyButtonService) readState() (ButtonState, error) {
+	// Simulate reading from GPIO pin
+	ran := rand.IntN(2)
+	return allBtnStates[ran], nil
+}
+
+func (s *DummyButtonService) handleStateChange(oldState, newState ButtonState) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Button was pushed (transitioned to closed)
+	if oldState == ButtonStateOpen && newState == ButtonStateClosed {
+		for _, fn := range s.onPush {
+			if err := fn(newState); err != nil {
+				fmt.Printf("Error in onPush callback: %v\n", err)
+			}
+		}
+	}
+
+	// Button was released (transitioned to open)
+	if oldState == ButtonStateClosed && newState == ButtonStateOpen {
+		for _, fn := range s.onRelease {
+			if err := fn(newState); err != nil {
+				fmt.Printf("Error in onRelease callback: %v\n", err)
+			}
+		}
+	}
+}
+
+func (s *DummyButtonService) Close() error {
+	s.cancel()  // Signal goroutine to stop
+	s.wg.Wait() // Wait for goroutine to finish
+	return nil
+}
+
+func (s *DummyButtonService) GetCurrentState() (*ButtonState, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	state := s.currentState
+	return &state, nil
+}
+
+func (s *DummyButtonService) OnPush(fn func(state ButtonState) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.onPush = append(s.onPush, fn)
+	return nil
+}
+
+func (s *DummyButtonService) OnRelease(fn func(state ButtonState) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.onRelease = append(s.onRelease, fn)
+	return nil
+}
