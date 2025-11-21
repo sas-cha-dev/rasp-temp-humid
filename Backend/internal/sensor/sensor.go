@@ -38,7 +38,7 @@ func NewDHTSensors(re *redis.Client) *DHTSensors {
 func (D DHTSensors) ReadSensor(sensorID int) (*Reading, error) {
 	// read from redis 'sensor<id>'
 	res, err := D.rdb.Get(context.Background(), fmt.
-		Sprintf("sensor:%d", sensorID)).
+		Sprintf("sensor%d", sensorID)).
 		Result()
 	if err != nil {
 		return nil, err

@@ -59,7 +59,7 @@ func main() {
 
 	// Initialize sensors
 	sensorService := sensor.NewDHTSensors(rdb)
-	buttonService := sensor.NewDummyButtonService(10)
+	//buttonService := sensor.NewDummyButtonService(10)
 
 	///////////////////////// Applications /////////////////////////
 
@@ -70,31 +70,31 @@ func main() {
 	dhtApp := sensor.NewSensorService(sensorService, repo)
 	dhtApp.Start(ctx)
 
-	var startsAt, endsAt time.Time
-	_ = buttonService.OnPush(func(state sensor.ButtonState) error {
-		startsAt = time.Now()
-		log.Printf("button pushed at %v", startsAt)
-		return nil
-	})
-	_ = buttonService.OnRelease(func(state sensor.ButtonState) error {
-		endsAt = time.Now()
-		if startsAt.IsZero() {
-			log.Printf("button released but never pushed at %v", endsAt)
-			return nil
-		}
-		err := btnRepo.Save(10, startsAt, endsAt)
-		if err != nil {
-			return err
-		}
-		startsAt = time.Time{}
-		endsAt = time.Time{}
-		log.Println("Saved button ", startsAt, endsAt)
-		return nil
-	})
-	err = buttonService.Start(time.Minute / 2)
-	if err != nil {
-		log.Fatalf("Failed to start button service: %v", err)
-	}
+	//var startsAt, endsAt time.Time
+	//_ = buttonService.OnPush(func(state sensor.ButtonState) error {
+	//	startsAt = time.Now()
+	//	log.Printf("button pushed at %v", startsAt)
+	//	return nil
+	//})
+	//_ = buttonService.OnRelease(func(state sensor.ButtonState) error {
+	//	endsAt = time.Now()
+	//	if startsAt.IsZero() {
+	//		log.Printf("button released but never pushed at %v", endsAt)
+	//		return nil
+	//	}
+	//	err := btnRepo.Save(10, startsAt, endsAt)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	startsAt = time.Time{}
+	//	endsAt = time.Time{}
+	//	log.Println("Saved button ", startsAt, endsAt)
+	//	return nil
+	//})
+	//err = buttonService.Start(time.Minute / 2)
+	//if err != nil {
+	//	log.Fatalf("Failed to start button service: %v", err)
+	//}
 
 	// Initialize HTTP handler
 	h, err := handler.New(repo, templateDir)

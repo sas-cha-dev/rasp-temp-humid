@@ -76,5 +76,5 @@ func (sensorApp *SensorApp) performReading() {
 }
 
 func (sensorApp *SensorApp) Stop() {
-
+	sensorApp.stop <- true
 }
