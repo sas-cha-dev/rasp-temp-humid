@@ -18,6 +18,6 @@ func main() {
 	for {
 		res := pin.Read()
 		println("Result on 24: ", res)
-		time.Sleep(2000)
+		time.Sleep(time.Second * 2)
 	}
 }

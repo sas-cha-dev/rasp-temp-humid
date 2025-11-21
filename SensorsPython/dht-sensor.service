@@ -1,0 +1,14 @@
+[Unit]
+Description=DHT22 Sensors to Redis
+After=network.target redis.service
+
+[Service]
+Type=simple
+User=sascha
+WorkingDirectory=/home/sascha/rasp-temp-humid/SensorsPython
+ExecStart=/home/sascha/rasp-temp-humid/SensorsPython/env/bin/python /home/sascha/rasp-temp-humid/SensorsPython/dht22.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
