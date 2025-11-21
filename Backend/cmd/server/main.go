@@ -4,7 +4,9 @@ import (
 	"BeRoHuTe/internal/handler"
 	"BeRoHuTe/internal/repository"
 	"BeRoHuTe/internal/sensor"
+	"context"
 	"database/sql"
+	"github.com/redis/go-redis/v9"
 	"log"
 	"net/http"
 	"os"
@@ -34,6 +36,15 @@ func main() {
 	}
 	defer db.Close()
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password
+		DB:       0,  // use default DB
+		Protocol: 2,
+	})
+
+	///////////////////////// Repos /////////////////////////
+
 	// Initialize repository
 	repo, err := repository.New(db)
 	if err != nil {
@@ -47,11 +58,17 @@ func main() {
 	}
 
 	// Initialize sensors
-	sensorService := sensor.NewDummyService()
+	sensorService := sensor.NewDHTSensors(rdb)
 	buttonService := sensor.NewDummyButtonService(10)
 
-	// Start background sensor reading
-	go readSensors(sensorService, repo, readInterval)
+	///////////////////////// Applications /////////////////////////
+
+	ctx := context.Background()
+	defer ctx.Done()
+
+	// read dht sensors
+	dhtApp := sensor.NewSensorService(sensorService, repo)
+	dhtApp.Start(ctx)
 
 	var startsAt, endsAt time.Time
 	_ = buttonService.OnPush(func(state sensor.ButtonState) error {
@@ -93,37 +110,6 @@ func main() {
 	log.Printf("Starting server on port %s, reading sensors every %d seconds", port, readInterval)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
-	}
-}
-
-func readSensors(sensorService sensor.Service, repo *repository.Repository, intervalSeconds int) {
-	ticker := time.NewTicker(time.Duration(intervalSeconds) * time.Second)
-	defer ticker.Stop()
-
-	// Read immediately on start
-	performReading(sensorService, repo)
-
-	// Then read at intervals
-	for range ticker.C {
-		performReading(sensorService, repo)
-	}
-}
-
-func performReading(sensorService sensor.Service, repo *repository.Repository) {
-	readings, err := sensorService.ReadAllSensors()
-	if err != nil {
-		log.Printf("Error reading sensors: %v", err)
-		return
-	}
-
-	for _, reading := range readings {
-		err := repo.Save(reading.SensorID, reading.Temperature, reading.Humidity, reading.Timestamp)
-		if err != nil {
-			log.Printf("Error saving reading for sensor %d: %v", reading.SensorID, err)
-		} else {
-			log.Printf("Saved: Sensor %d - Temp: %.1f°C, Humidity: %.1f%%, Time: %s",
-				reading.SensorID, reading.Temperature, reading.Humidity, reading.Timestamp.Format("15:04:05"))
-		}
 	}
 }
 
