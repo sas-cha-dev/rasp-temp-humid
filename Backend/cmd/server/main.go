@@ -6,15 +6,13 @@ import (
 	"BeRoHuTe/internal/sensor"
 	"context"
 	"database/sql"
+	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"log"
+	_ "modernc.org/sqlite"
 	"net/http"
 	"os"
 	"strconv"
-	"time"
-
-	"github.com/joho/godotenv"
-	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -52,10 +50,10 @@ func main() {
 	}
 
 	// Init Button repo
-	btnRepo, err := repository.NewButtonRepository(db)
-	if err != nil {
-		log.Fatalf("Failed to initialize button repository: %v", err)
-	}
+	//btnRepo, err := repository.NewButtonRepository(db)
+	//if err != nil {
+	//	log.Fatalf("Failed to initialize button repository: %v", err)
+	//}
 
 	// Initialize sensors
 	sensorService := sensor.NewDHTSensors(rdb)
