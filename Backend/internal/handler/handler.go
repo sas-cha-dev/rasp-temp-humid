@@ -19,18 +19,20 @@ type Repository interface {
 
 type Handler struct {
 	repo     Repository
+	btnRepo  repository.ButtonRepository
 	indexTpl *template.Template
 }
 
 type DashboardData struct {
-	Latest   []*repository.Reading
-	LastHour map[int]map[string]float64
-	Today    map[int]map[string]float64
-	ThisWeek map[int]map[string]float64
-	Last100  []*repository.Reading
+	Latest           []*repository.Reading
+	LastHour         map[int]map[string]float64
+	Today            map[int]map[string]float64
+	ThisWeek         map[int]map[string]float64
+	Last100          []*repository.Reading
+	LastButtonPushes []*repository.ButtonReading
 }
 
-func New(repo Repository, templateDir string) (*Handler, error) {
+func New(repo Repository, templateDir string, btnRepo repository.ButtonRepository) (*Handler, error) {
 	tpl, err := template.ParseFiles(filepath.Join(templateDir, "index.html"))
 	if err != nil {
 		return nil, err
@@ -39,6 +41,7 @@ func New(repo Repository, templateDir string) (*Handler, error) {
 	return &Handler{
 		repo:     repo,
 		indexTpl: tpl,
+		btnRepo:  btnRepo,
 	}, nil
 }
 
@@ -71,12 +74,18 @@ func (h *Handler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error getting last 100 readings: %v", err)
 	}
 
+	lastOpenWindows, err := h.btnRepo.GetLatest()
+	if err != nil {
+		log.Printf("Error getting last open windows: %v", err)
+	}
+
 	data := DashboardData{
-		Latest:   latest,
-		LastHour: lastHour,
-		Today:    today,
-		ThisWeek: thisWeek,
-		Last100:  last100,
+		Latest:           latest,
+		LastHour:         lastHour,
+		Today:            today,
+		ThisWeek:         thisWeek,
+		Last100:          last100,
+		LastButtonPushes: lastOpenWindows,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -98,13 +107,15 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 	today, _ := h.repo.GetAverageToday()
 	thisWeek, _ := h.repo.GetAverageThisWeek()
 	last100, _ := h.repo.GetLastN(100)
+	lastOpenWindows, _ := h.btnRepo.GetLatest()
 
 	data := DashboardData{
-		Latest:   latest,
-		LastHour: lastHour,
-		Today:    today,
-		ThisWeek: thisWeek,
-		Last100:  last100,
+		Latest:           latest,
+		LastHour:         lastHour,
+		Today:            today,
+		ThisWeek:         thisWeek,
+		Last100:          last100,
+		LastButtonPushes: lastOpenWindows,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

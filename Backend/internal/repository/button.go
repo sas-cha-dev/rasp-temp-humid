@@ -14,6 +14,7 @@ type ButtonReading struct {
 
 type ButtonRepository interface {
 	Save(buttonID int, startAt time.Time, endAt time.Time) error
+	GetLatest() ([]*ButtonReading, error)
 }
 
 type buttonRepository struct {
@@ -52,6 +53,19 @@ func (r *buttonRepository) Save(buttonID int, startAt time.Time, endAt time.Time
 	query := `INSERT INTO button_readings (button_id, start_at, end_at) VALUES (?, ?, ?)`
 	_, err := r.db.Exec(query, buttonID, startAt, endAt)
 	return err
+}
+
+func (r *buttonRepository) GetLatest() ([]*ButtonReading, error) {
+	query := `SELECT * FROM button_readings ORDER BY start_at DESC LIMIT 1`
+	readings, err := r.queryReadings(query)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(readings) == 0 {
+		return nil, nil
+	}
+	return readings, nil
 }
 
 func (r *buttonRepository) queryReadings(query string, args ...interface{}) ([]*ButtonReading, error) {
