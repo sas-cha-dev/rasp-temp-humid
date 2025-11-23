@@ -82,7 +82,7 @@ func main() {
 	}
 
 	// Initialize HTTP handler
-	h, err := handler.New(repo, templateDir)
+	h, err := handler.New(repo, templateDir, btnRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize handler: %v", err)
 	}
