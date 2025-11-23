@@ -40,7 +40,7 @@ func NewRealButtonService(pin int) (sensor.ButtonService, error) {
 	}, nil
 }
 
-func (b RealButtonService) GetCurrentState() (sensor.ButtonState, error) {
+func (b *RealButtonService) GetCurrentState() (sensor.ButtonState, error) {
 	switch b.pin.Read() {
 	case rpio.High:
 		return sensor.ButtonStateOpen, nil
@@ -51,15 +51,15 @@ func (b RealButtonService) GetCurrentState() (sensor.ButtonState, error) {
 	}
 }
 
-func (b RealButtonService) OnPush(fn func(state sensor.ButtonState) error) {
+func (b *RealButtonService) OnPush(fn func(state sensor.ButtonState) error) {
 	b.onPushFns = append(b.onPushFns, fn)
 }
 
-func (b RealButtonService) OnRelease(fn func(state sensor.ButtonState) error) {
+func (b *RealButtonService) OnRelease(fn func(state sensor.ButtonState) error) {
 	b.onReleaseFns = append(b.onReleaseFns, fn)
 }
 
-func (b RealButtonService) Start(ctx context.Context, dur time.Duration) {
+func (b *RealButtonService) Start(ctx context.Context, dur time.Duration) {
 	if b.start == true {
 		return
 	}
@@ -70,15 +70,15 @@ func (b RealButtonService) Start(ctx context.Context, dur time.Duration) {
 	b.stop = make(chan bool)
 	go func() {
 		defer ticker.Stop()
-		
-		select {
-		case <-b.stop:
-		case <-ctx.Done():
-			return
-		default:
-		}
 
 		for range ticker.C {
+			select {
+			case <-b.stop:
+			case <-ctx.Done():
+				return
+			default:
+			}
+
 			err := b.listenToEdge()
 			if err != nil {
 				log.Println("ButtonService error: ", err)
@@ -87,7 +87,7 @@ func (b RealButtonService) Start(ctx context.Context, dur time.Duration) {
 	}()
 }
 
-func (b RealButtonService) listenToEdge() error {
+func (b *RealButtonService) listenToEdge() error {
 	var err error
 
 	newState, err := b.GetCurrentState()
@@ -110,7 +110,7 @@ func (b RealButtonService) listenToEdge() error {
 	return nil
 }
 
-func (b RealButtonService) executeFns(push, release bool) {
+func (b *RealButtonService) executeFns(push, release bool) {
 	if push {
 		for _, fn := range b.onPushFns {
 			err := fn(sensor.ButtonStateOpen)
@@ -129,7 +129,7 @@ func (b RealButtonService) executeFns(push, release bool) {
 	}
 }
 
-func (b RealButtonService) Close() error {
+func (b *RealButtonService) Close() error {
 	b.start = false
 	return rpio.Close()
 }
