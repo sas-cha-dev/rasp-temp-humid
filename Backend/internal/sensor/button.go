@@ -19,9 +19,10 @@ const (
 var allBtnStates = []ButtonState{ButtonStateOpen, ButtonStateClosed}
 
 type ButtonService interface {
-	GetCurrentState() (*ButtonState, error)
-	OnPush(fn func(state ButtonState) error) error
-	OnRelease(fn func(state ButtonState) error) error
+	Start(ctx context.Context, dur time.Duration)
+	GetCurrentState() (ButtonState, error)
+	OnPush(fn func(state ButtonState) error)
+	OnRelease(fn func(state ButtonState) error)
 	Close() error
 }
 
@@ -37,7 +38,7 @@ type DummyButtonService struct {
 	wg     sync.WaitGroup
 }
 
-func NewDummyButtonService(gpioPin int) *DummyButtonService {
+func NewDummyButtonService(gpioPin int) ButtonService {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DummyButtonService{
 		gpioPin:      gpioPin,
@@ -50,10 +51,9 @@ func NewDummyButtonService(gpioPin int) *DummyButtonService {
 }
 
 // Start begins listening to button state changes
-func (s *DummyButtonService) Start(rate time.Duration) error {
+func (s *DummyButtonService) Start(ctx context.Context, dur time.Duration) {
 	s.wg.Add(1)
-	go s.listenToButton(rate)
-	return nil
+	go s.listenToButton(dur)
 }
 
 func (s *DummyButtonService) listenToButton(rate time.Duration) {
@@ -120,26 +120,25 @@ func (s *DummyButtonService) Close() error {
 	return nil
 }
 
-func (s *DummyButtonService) GetCurrentState() (*ButtonState, error) {
+func (s *DummyButtonService) GetCurrentState() (ButtonState, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	state := s.currentState
-	return &state, nil
+	return s.currentState, nil
 }
 
-func (s *DummyButtonService) OnPush(fn func(state ButtonState) error) error {
+func (s *DummyButtonService) OnPush(fn func(state ButtonState) error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.onPush = append(s.onPush, fn)
-	return nil
+	return
 }
 
-func (s *DummyButtonService) OnRelease(fn func(state ButtonState) error) error {
+func (s *DummyButtonService) OnRelease(fn func(state ButtonState) error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.onRelease = append(s.onRelease, fn)
-	return nil
+	return
 }

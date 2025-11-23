@@ -3,6 +3,7 @@ package main
 import (
 	"BeRoHuTe/internal/handler"
 	"BeRoHuTe/internal/repository"
+	"BeRoHuTe/internal/rpi"
 	"BeRoHuTe/internal/sensor"
 	"context"
 	"database/sql"
@@ -50,14 +51,17 @@ func main() {
 	}
 
 	// Init Button repo
-	//btnRepo, err := repository.NewButtonRepository(db)
-	//if err != nil {
-	//	log.Fatalf("Failed to initialize button repository: %v", err)
-	//}
+	btnRepo, err := repository.NewButtonRepository(db)
+	if err != nil {
+		log.Fatalf("Failed to initialize button repository: %v", err)
+	}
 
 	// Initialize sensors
 	sensorService := sensor.NewDHTSensors(rdb)
-	//buttonService := sensor.NewDummyButtonService(10)
+	btnService, err := rpi.NewRealButtonService(24)
+	if err != nil {
+		log.Fatalf("Failed to initialize button service: %v", err)
+	}
 
 	///////////////////////// Applications /////////////////////////
 
@@ -68,31 +72,13 @@ func main() {
 	dhtApp := sensor.NewSensorService(sensorService, repo)
 	dhtApp.Start(ctx)
 
-	//var startsAt, endsAt time.Time
-	//_ = buttonService.OnPush(func(state sensor.ButtonState) error {
-	//	startsAt = time.Now()
-	//	log.Printf("button pushed at %v", startsAt)
-	//	return nil
-	//})
-	//_ = buttonService.OnRelease(func(state sensor.ButtonState) error {
-	//	endsAt = time.Now()
-	//	if startsAt.IsZero() {
-	//		log.Printf("button released but never pushed at %v", endsAt)
-	//		return nil
-	//	}
-	//	err := btnRepo.Save(10, startsAt, endsAt)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	startsAt = time.Time{}
-	//	endsAt = time.Time{}
-	//	log.Println("Saved button ", startsAt, endsAt)
-	//	return nil
-	//})
-	//err = buttonService.Start(time.Minute / 2)
-	//if err != nil {
-	//	log.Fatalf("Failed to start button service: %v", err)
-	//}
+	btnApp, err := sensor.NewButtonApp(btnService, btnRepo)
+	if err != nil {
+		log.Fatalf("Failed to initialize button application: %v", err)
+	}
+	if err := btnApp.Start(ctx); err != nil {
+		log.Fatalf("Failed to start button application: %v", err)
+	}
 
 	// Initialize HTTP handler
 	h, err := handler.New(repo, templateDir)

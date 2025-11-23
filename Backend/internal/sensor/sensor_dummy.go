@@ -41,10 +41,10 @@ func (d *DummyService) ReadSensor(sensorID int) (*Reading, error) {
 	}
 
 	return &Reading{
-		SensorID:     sensorID,
-		TemperatureC: math.Round(temp*10) / 10,     // Round to 1 decimal
-		Humidity:     math.Round(humidity*10) / 10, // Round to 1 decimal
-		Timestamp:    now,
+		SensorID:    sensorID,
+		Temperature: math.Round(temp*10) / 10,     // Round to 1 decimal
+		Humidity:    math.Round(humidity*10) / 10, // Round to 1 decimal
+		Timestamp:   now,
 	}, nil
 }
 

@@ -10,11 +10,17 @@ import (
 
 // Reading represents a single sensor reading
 type Reading struct {
-	SensorID     int
-	TemperatureC float64   `json:"temperature_c"`
-	TemperatureF float64   `json:"temperature_f"`
-	Humidity     float64   `json:"humidity"`
-	Timestamp    time.Time `json:"timestamp"`
+	SensorID    int
+	Temperature float64   `json:"temperature"`
+	Humidity    float64   `json:"humidity"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+type sensorReading struct {
+	TemperatureC float64 `json:"temperature_c"`
+	TemperatureF float64 `json:"temperature_f"`
+	Humidity     float64 `json:"humidity"`
+	Timestamp    float64 `json:"timestamp"`
 }
 
 // Service defines the interface for reading sensor data
@@ -44,15 +50,20 @@ func (D DHTSensors) ReadSensor(sensorID int) (*Reading, error) {
 		return nil, err
 	}
 
-	var reading Reading
+	var reading sensorReading
 
 	if err := json.Unmarshal([]byte(res), &reading); err != nil {
 		return nil, err
 	}
 
-	reading.SensorID = sensorID
+	r := Reading{
+		SensorID:    sensorID,
+		Temperature: reading.TemperatureC,
+		Humidity:    reading.Humidity,
+		Timestamp:   time.Unix(int64(reading.Timestamp), 0),
+	}
 
-	return &reading, nil
+	return &r, nil
 }
 
 func (D DHTSensors) ReadAllSensors() ([]*Reading, error) {
