@@ -1,0 +1,13 @@
+[Unit]
+Description=Monitor for temperature, humidity and button press on the raspberry pi
+
+[Service]
+Type=simple
+User=sascha
+WorkingDirectory=/home/sascha/rasp-temp-humid/Backend
+ExecStart=go run ./cmd/rpi/main.go
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
