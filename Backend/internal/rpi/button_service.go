@@ -66,10 +66,11 @@ func (b RealButtonService) Start(ctx context.Context, dur time.Duration) {
 
 	b.start = true
 	ticker := time.NewTicker(dur)
-	defer ticker.Stop()
 
 	b.stop = make(chan bool)
 	go func() {
+		defer ticker.Stop()
+		
 		select {
 		case <-b.stop:
 		case <-ctx.Done():

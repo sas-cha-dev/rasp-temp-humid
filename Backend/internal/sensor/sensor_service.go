@@ -12,41 +12,37 @@ type DHTApp struct {
 	repo           *repository.SensorRepository
 	stop           chan bool
 	lastTimestamps map[int]time.Time
+	interval       time.Duration
 }
 
-func NewSensorService(sensorService Service, repo *repository.SensorRepository) *DHTApp {
+func NewSensorService(readInterval time.Duration, sensorService Service, repo *repository.SensorRepository) *DHTApp {
 	return &DHTApp{
 		service:        sensorService,
 		repo:           repo,
 		stop:           make(chan bool),
 		lastTimestamps: map[int]time.Time{},
+		interval:       readInterval,
 	}
 }
 
 func (sensorApp *DHTApp) Start(ctx context.Context) {
 	sensorApp.stop = make(chan bool)
+	ticker := time.NewTicker(sensorApp.interval)
 	go func() {
-		select {
-		case <-ctx.Done():
-			return
-		case <-sensorApp.stop:
-			return
-		default:
+		defer ticker.Stop()
+
+		for range ticker.C {
+			select {
+			case <-ctx.Done():
+				return
+			case <-sensorApp.stop:
+				return
+			default:
+			}
+
+			sensorApp.performReading()
 		}
-
-		sensorApp.readSensors()
 	}()
-}
-
-func (sensorApp *DHTApp) readSensors() {
-	ticker := time.NewTimer(time.Duration(60) * time.Second)
-	defer ticker.Stop()
-
-	sensorApp.performReading()
-
-	for range ticker.C {
-		sensorApp.performReading()
-	}
 }
 
 func (sensorApp *DHTApp) performReading() {
@@ -59,7 +55,7 @@ func (sensorApp *DHTApp) performReading() {
 
 	for _, reading := range readings {
 		lastTimestamp, ok := sensorApp.lastTimestamps[reading.SensorID]
-		if ok && (lastTimestamp.Before(reading.Timestamp) ||
+		if ok && (lastTimestamp.After(reading.Timestamp) ||
 			lastTimestamp.Equal(reading.Timestamp)) {
 			continue
 		}

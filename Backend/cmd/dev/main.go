@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 func main() {
@@ -57,7 +58,7 @@ func main() {
 	defer ctx.Done()
 
 	// read dht sensors
-	dhtApp := sensor.NewSensorService(sensorService, repo)
+	dhtApp := sensor.NewSensorService(time.Duration(readInterval)*time.Second, sensorService, repo)
 	dhtApp.Start(ctx)
 	defer dhtApp.Stop()
 
