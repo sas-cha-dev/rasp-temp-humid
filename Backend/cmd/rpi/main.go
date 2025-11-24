@@ -5,6 +5,7 @@ import (
 	"BeRoHuTe/internal/repository"
 	"BeRoHuTe/internal/rpi"
 	"BeRoHuTe/internal/sensor"
+	"BeRoHuTe/internal/weather"
 	"context"
 	"database/sql"
 	"github.com/joho/godotenv"
@@ -14,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,6 +30,25 @@ func main() {
 	dbPath := getEnv("DB_PATH", "./data.db")
 	port := getEnv("PORT", "8080")
 	templateDir := getEnv("TEMPLATE_DIR", "./web")
+
+	weatherReadInterval := getEnvInt("WEATHER_READ_INTERVAL_MIN", 30) // in minutes
+	openWeatherApiKey := getEnv("OPEN_WEATHER_API_KEY", "")
+	locationCoords := getEnv("LOCATION_COORDS", "")
+
+	var locationLon, locationLat float64
+	if strings.TrimSpace(locationCoords) != "" {
+		lonLat := strings.Split(locationCoords, ",")
+
+		var err error
+		locationLat, err = strconv.ParseFloat(lonLat[0], 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+		locationLon, err = strconv.ParseFloat(lonLat[1], 64)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	// init db
 	db, err := sql.Open("sqlite", dbPath)
@@ -45,16 +66,18 @@ func main() {
 
 	///////////////////////// Repos /////////////////////////
 
-	// Initialize repository
+	// Initialize repositories
 	repo, err := repository.New(db)
 	if err != nil {
 		log.Fatalf("Failed to initialize repository: %v", err)
 	}
-
-	// Init Button repo
 	btnRepo, err := repository.NewButtonRepository(db)
 	if err != nil {
 		log.Fatalf("Failed to initialize button repository: %v", err)
+	}
+	weatherRepo, err := repository.NewWeatherRepository(db)
+	if err != nil {
+		log.Fatalf("Failed to initialize weather repository: %v", err)
 	}
 
 	// Initialize sensors
@@ -63,6 +86,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize button service: %v", err)
 	}
+	weatherService := weather.NewOpenWeatherService(
+		openWeatherApiKey,
+		locationLat,
+		locationLon)
 
 	///////////////////////// Applications /////////////////////////
 
@@ -72,6 +99,7 @@ func main() {
 	// read dht sensors
 	dhtApp := sensor.NewSensorService(time.Duration(readInterval)*time.Second, sensorService, repo)
 	dhtApp.Start(ctx)
+	defer dhtApp.Stop()
 
 	btnApp, err := sensor.NewButtonApp(btnService, btnRepo)
 	if err != nil {
@@ -80,6 +108,10 @@ func main() {
 	if err := btnApp.Start(ctx); err != nil {
 		log.Fatalf("Failed to start button application: %v", err)
 	}
+
+	weatherApp := weather.NewApp(weatherService, weatherRepo)
+	weatherApp.Start(ctx, time.Duration(weatherReadInterval)*time.Minute)
+	defer weatherApp.Stop()
 
 	// Initialize HTTP handler
 	h, err := handler.New(repo, templateDir, btnRepo)
