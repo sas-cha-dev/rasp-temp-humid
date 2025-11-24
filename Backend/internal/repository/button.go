@@ -31,7 +31,7 @@ func NewButtonRepository(db *sql.DB) (ButtonRepository, error) {
 		return nil, err
 	}
 
-	return &buttonRepository{db: db}, nil
+	return repo, nil
 }
 
 func (r *buttonRepository) createTable() error {
