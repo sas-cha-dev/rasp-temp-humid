@@ -27,7 +27,7 @@ func NewSensorService(readInterval time.Duration, sensorService Service, repo *r
 
 func (sensorApp *DHTApp) Start(ctx context.Context) {
 	sensorApp.stop = make(chan bool)
-	ticker := time.NewTicker(sensorApp.interval)
+	ticker := time.NewTicker(1 * time.Millisecond) // call directly
 	go func() {
 		defer ticker.Stop()
 
@@ -41,6 +41,8 @@ func (sensorApp *DHTApp) Start(ctx context.Context) {
 			}
 
 			sensorApp.performReading()
+
+			ticker.Reset(sensorApp.interval)
 		}
 	}()
 }
