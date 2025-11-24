@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"BeRoHuTe/internal/repository"
+	"BeRoHuTe/internal/contracts"
 	"encoding/json"
 	"html/template"
 	"log"
@@ -9,33 +9,41 @@ import (
 	"path/filepath"
 )
 
-type Repository interface {
-	GetLatest() ([]*repository.Reading, error)
-	GetLastN(n int) ([]*repository.Reading, error)
+type SensorRepository interface {
+	GetLatest() ([]*contracts.SensorReading, error)
+	GetLastN(n int) ([]*contracts.SensorReading, error)
 	GetAverageLastHour() (map[int]map[string]float64, error)
 	GetAverageToday() (map[int]map[string]float64, error)
 	GetAverageThisWeek() (map[int]map[string]float64, error)
 }
 
+type ButtonRepository interface {
+	GetLatest() ([]*contracts.ButtonReading, error)
+}
+
+type WeatherRepository interface {
+	GetLatest() ([]*contracts.WeatherData, error)
+}
+
 type Handler struct {
-	repo        Repository
-	btnRepo     repository.ButtonRepository
+	repo        SensorRepository
+	btnRepo     ButtonRepository
 	indexTpl    *template.Template
-	weatherRepo repository.WeatherRepository
+	weatherRepo WeatherRepository
 }
 
 type DashboardData struct {
-	Latest            []*repository.Reading
+	Latest            []*contracts.SensorReading
 	LastHour          map[int]map[string]float64
 	Today             map[int]map[string]float64
 	ThisWeek          map[int]map[string]float64
-	Last100           []*repository.Reading
-	LastButtonPushes  []*repository.ButtonReading
-	LatestWeatherData []*repository.WeatherData
+	Last100           []*contracts.SensorReading
+	LastButtonPushes  []*contracts.ButtonReading
+	LatestWeatherData []*contracts.WeatherData
 }
 
-func New(repo Repository, templateDir string, btnRepo repository.ButtonRepository,
-	weatherRepo repository.WeatherRepository) (*Handler, error) {
+func New(repo SensorRepository, templateDir string, btnRepo ButtonRepository,
+	weatherRepo WeatherRepository) (*Handler, error) {
 	tpl, err := template.ParseFiles(filepath.Join(templateDir, "index.html"))
 	if err != nil {
 		return nil, err

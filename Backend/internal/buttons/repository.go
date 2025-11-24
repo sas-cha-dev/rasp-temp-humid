@@ -1,20 +1,14 @@
-package repository
+package buttons
 
 import (
+	"BeRoHuTe/internal/contracts"
 	"database/sql"
 	"time"
 )
 
-type ButtonReading struct {
-	ID       int64     `json:"id"`
-	ButtonID int       `json:"button_id"`
-	StartAt  time.Time `json:"start_at"`
-	EndAt    time.Time `json:"end_at"`
-}
-
 type ButtonRepository interface {
 	Save(buttonID int, startAt time.Time, endAt time.Time) error
-	GetLatest() ([]*ButtonReading, error)
+	GetLatest() ([]*contracts.ButtonReading, error)
 }
 
 type buttonRepository struct {
@@ -55,7 +49,7 @@ func (r *buttonRepository) Save(buttonID int, startAt time.Time, endAt time.Time
 	return err
 }
 
-func (r *buttonRepository) GetLatest() ([]*ButtonReading, error) {
+func (r *buttonRepository) GetLatest() ([]*contracts.ButtonReading, error) {
 	query := `SELECT * FROM button_readings ORDER BY start_at DESC LIMIT 1`
 	readings, err := r.queryReadings(query)
 	if err != nil {
@@ -68,16 +62,16 @@ func (r *buttonRepository) GetLatest() ([]*ButtonReading, error) {
 	return readings, nil
 }
 
-func (r *buttonRepository) queryReadings(query string, args ...interface{}) ([]*ButtonReading, error) {
+func (r *buttonRepository) queryReadings(query string, args ...interface{}) ([]*contracts.ButtonReading, error) {
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var readings []*ButtonReading
+	var readings []*contracts.ButtonReading
 	for rows.Next() {
-		var reading ButtonReading
+		var reading contracts.ButtonReading
 		err := rows.Scan(&reading.ID, &reading.ButtonID, &reading.StartAt, &reading.EndAt)
 		if err != nil {
 			return nil, err

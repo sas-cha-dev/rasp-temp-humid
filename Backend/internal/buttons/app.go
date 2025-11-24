@@ -1,7 +1,6 @@
-package sensor
+package buttons
 
 import (
-	"BeRoHuTe/internal/repository"
 	"context"
 	"fmt"
 	"log"
@@ -9,14 +8,14 @@ import (
 )
 
 type ButtonApp struct {
-	service ButtonService
-	repo    repository.ButtonRepository
+	service Service
+	repo    ButtonRepository
 
 	startsAt time.Time
 	endsAt   time.Time
 }
 
-func NewButtonApp(service ButtonService, repo repository.ButtonRepository) (*ButtonApp, error) {
+func NewButtonApp(service Service, repo ButtonRepository) (*ButtonApp, error) {
 	return &ButtonApp{
 		service: service,
 		repo:    repo,

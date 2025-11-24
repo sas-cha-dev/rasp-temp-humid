@@ -156,13 +156,13 @@
 
         {{range .LastButtonPushes}}
         <div class="sensor-card">
-            <h2>Button {{.ID}}</h2>
+            <h2>Ventilation {{.ID}}</h2>
             <div class="reading">
                 <div class="reading-value">
                     {{.StartAt.Format "15:04:05"}} - {{.EndAt.Format "15:04:05"}}
                 </div>
                 <div class="reading-label">
-                    Button interval
+                    Ventilation period
                 </div>
                 <div class="timestamp">{{.StartAt.Format "2006-01-02"}}</div>
             </div>

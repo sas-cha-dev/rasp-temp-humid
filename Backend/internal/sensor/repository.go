@@ -1,29 +1,22 @@
-package repository
+package sensor
 
 import (
+	"BeRoHuTe/internal/contracts"
 	"database/sql"
 	"time"
 )
 
-type Reading struct {
-	ID          int64     `json:"id"`
-	SensorID    int       `json:"sensor_id"`
-	Temperature float64   `json:"temperature"`
-	Humidity    float64   `json:"humidity"`
-	Timestamp   time.Time `json:"timestamp"`
-}
-
-type SensorRepository struct {
+type Repository struct {
 	db *sql.DB
 }
 
 // New creates a new repository and initializes the database
-func New(db *sql.DB) (*SensorRepository, error) {
+func New(db *sql.DB) (*Repository, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
-	repo := &SensorRepository{db: db}
+	repo := &Repository{db: db}
 	if err := repo.createTable(); err != nil {
 		return nil, err
 	}
@@ -31,7 +24,7 @@ func New(db *sql.DB) (*SensorRepository, error) {
 	return repo, nil
 }
 
-func (r *SensorRepository) createTable() error {
+func (r *Repository) createTable() error {
 	query := `
 	CREATE TABLE IF NOT EXISTS readings (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,14 +40,14 @@ func (r *SensorRepository) createTable() error {
 }
 
 // Save stores a new reading
-func (r *SensorRepository) Save(sensorID int, temperature, humidity float64, timestamp time.Time) error {
+func (r *Repository) Save(sensorID int, temperature, humidity float64, timestamp time.Time) error {
 	query := `INSERT INTO readings (sensor_id, temperature, humidity, timestamp) VALUES (?, ?, ?, ?)`
 	_, err := r.db.Exec(query, sensorID, temperature, humidity, timestamp)
 	return err
 }
 
 // GetLatest returns the latest reading for each sensor
-func (r *SensorRepository) GetLatest() ([]*Reading, error) {
+func (r *Repository) GetLatest() ([]*contracts.SensorReading, error) {
 	query := `
 	SELECT id, sensor_id, temperature, humidity, timestamp
 	FROM readings
@@ -69,7 +62,7 @@ func (r *SensorRepository) GetLatest() ([]*Reading, error) {
 }
 
 // GetLastN returns the last N readings for all sensors
-func (r *SensorRepository) GetLastN(n int) ([]*Reading, error) {
+func (r *Repository) GetLastN(n int) ([]*contracts.SensorReading, error) {
 	query := `
 	SELECT id, sensor_id, temperature, humidity, timestamp
 	FROM readings
@@ -80,7 +73,7 @@ func (r *SensorRepository) GetLastN(n int) ([]*Reading, error) {
 }
 
 // GetAverageLastHour returns average temperature and humidity for each sensor in the last hour
-func (r *SensorRepository) GetAverageLastHour() (map[int]map[string]float64, error) {
+func (r *Repository) GetAverageLastHour() (map[int]map[string]float64, error) {
 	query := `
 	SELECT sensor_id, AVG(temperature) as avg_temp, AVG(humidity) as avg_humidity
 	FROM readings
@@ -91,7 +84,7 @@ func (r *SensorRepository) GetAverageLastHour() (map[int]map[string]float64, err
 }
 
 // GetAverageToday returns average temperature and humidity for each sensor today
-func (r *SensorRepository) GetAverageToday() (map[int]map[string]float64, error) {
+func (r *Repository) GetAverageToday() (map[int]map[string]float64, error) {
 	query := `
 	SELECT sensor_id, AVG(temperature) as avg_temp, AVG(humidity) as avg_humidity
 	FROM readings
@@ -102,7 +95,7 @@ func (r *SensorRepository) GetAverageToday() (map[int]map[string]float64, error)
 }
 
 // GetAverageThisWeek returns average temperature and humidity for each sensor this week
-func (r *SensorRepository) GetAverageThisWeek() (map[int]map[string]float64, error) {
+func (r *Repository) GetAverageThisWeek() (map[int]map[string]float64, error) {
 	query := `
 	SELECT sensor_id, AVG(temperature) as avg_temp, AVG(humidity) as avg_humidity
 	FROM readings
@@ -112,16 +105,16 @@ func (r *SensorRepository) GetAverageThisWeek() (map[int]map[string]float64, err
 	return r.queryAverages(query)
 }
 
-func (r *SensorRepository) queryReadings(query string, args ...interface{}) ([]*Reading, error) {
+func (r *Repository) queryReadings(query string, args ...interface{}) ([]*contracts.SensorReading, error) {
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var readings []*Reading
+	var readings []*contracts.SensorReading
 	for rows.Next() {
-		var reading Reading
+		var reading contracts.SensorReading
 		err := rows.Scan(&reading.ID, &reading.SensorID, &reading.Temperature, &reading.Humidity, &reading.Timestamp)
 		if err != nil {
 			return nil, err
@@ -132,7 +125,7 @@ func (r *SensorRepository) queryReadings(query string, args ...interface{}) ([]*
 	return readings, rows.Err()
 }
 
-func (r *SensorRepository) queryAverages(query string) (map[int]map[string]float64, error) {
+func (r *Repository) queryAverages(query string) (map[int]map[string]float64, error) {
 	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err

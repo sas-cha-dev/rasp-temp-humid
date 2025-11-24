@@ -1,7 +1,7 @@
 package weather
 
 import (
-	"BeRoHuTe/internal/repository"
+	"BeRoHuTe/internal/contracts"
 	"context"
 	"log"
 	"time"
@@ -9,12 +9,12 @@ import (
 
 type App struct {
 	service Service
-	repo    repository.WeatherRepository
+	repo    WeatherRepository
 	start   bool
 	stop    chan bool
 }
 
-func NewApp(s Service, r repository.WeatherRepository) *App {
+func NewApp(s Service, r WeatherRepository) *App {
 	return &App{
 		service: s,
 		repo:    r,
@@ -70,7 +70,7 @@ func (a *App) fetchAndStoreCurrentWeatherDetails() error {
 	}
 
 	// save to repository
-	err = a.repo.Save(repository.WeatherData{
+	err = a.repo.Save(contracts.WeatherData{
 		Time:        time.Unix(details.Timestamp, 0),
 		Name:        "Home",
 		Latitude:    details.Latitude,

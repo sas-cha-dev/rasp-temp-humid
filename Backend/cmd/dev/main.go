@@ -1,17 +1,17 @@
 package main
 
 import (
+	"BeRoHuTe/internal/buttons"
 	"BeRoHuTe/internal/handler"
-	"BeRoHuTe/internal/repository"
 	"BeRoHuTe/internal/sensor"
 	"BeRoHuTe/internal/weather"
+	"BeRoHuTe/util"
 	"context"
 	"database/sql"
 	"github.com/joho/godotenv"
 	"log"
 	_ "modernc.org/sqlite"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -24,14 +24,14 @@ func main() {
 	}
 
 	// Load configuration from environment
-	readInterval := getEnvInt("READ_INTERVAL", 60) // default 60 seconds
-	dbPath := getEnv("DB_PATH", "./data.db")
-	port := getEnv("PORT", "8080")
-	templateDir := getEnv("TEMPLATE_DIR", "./web")
+	readInterval := util.GetEnvInt("READ_INTERVAL", 60) // default 60 seconds
+	dbPath := util.GetEnv("DB_PATH", "./data.db")
+	port := util.GetEnv("PORT", "8080")
+	templateDir := util.GetEnv("TEMPLATE_DIR", "./web")
 
-	weatherReadInterval := getEnvInt("WEATHER_READ_INTERVAL_MIN", 30) // in minutes
-	openWeatherApiKey := getEnv("OPEN_WEATHER_API_KEY", "")
-	locationCoords := getEnv("LOCATION_COORDS", "")
+	weatherReadInterval := util.GetEnvInt("WEATHER_READ_INTERVAL_MIN", 30) // in minutes
+	openWeatherApiKey := util.GetEnv("OPEN_WEATHER_API_KEY", "")
+	locationCoords := util.GetEnv("LOCATION_COORDS", "")
 
 	var locationLon, locationLat float64
 	if strings.TrimSpace(locationCoords) != "" {
@@ -58,22 +58,22 @@ func main() {
 	///////////////////////// Repos /////////////////////////
 
 	// Initialize repositories
-	repo, err := repository.New(db)
+	repo, err := sensor.New(db)
 	if err != nil {
 		log.Fatalf("Failed to initialize repository: %v", err)
 	}
-	btnRepo, err := repository.NewButtonRepository(db)
+	btnRepo, err := buttons.NewButtonRepository(db)
 	if err != nil {
 		log.Fatalf("Failed to initialize button repository: %v", err)
 	}
-	weatherRepo, err := repository.NewWeatherRepository(db)
+	weatherRepo, err := weather.NewWeatherRepository(db)
 	if err != nil {
 		log.Fatalf("Failed to initialize weather repository: %v", err)
 	}
 
 	// Initialize sensors
 	sensorService := sensor.NewDummyService()
-	btnService := sensor.NewDummyButtonService(24)
+	btnService := buttons.NewDummyService(24)
 	weatherService := weather.NewOpenWeatherService(
 		openWeatherApiKey,
 		locationLat,
@@ -85,11 +85,11 @@ func main() {
 	defer ctx.Done()
 
 	// read dht sensors
-	dhtApp := sensor.NewSensorService(time.Duration(readInterval)*time.Second, sensorService, repo)
+	dhtApp := sensor.NewApp(time.Duration(readInterval)*time.Second, sensorService, repo)
 	dhtApp.Start(ctx)
 	defer dhtApp.Stop()
 
-	btnApp, err := sensor.NewButtonApp(btnService, btnRepo)
+	btnApp, err := buttons.NewButtonApp(btnService, btnRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize button application: %v", err)
 	}
@@ -116,20 +116,4 @@ func main() {
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
 }

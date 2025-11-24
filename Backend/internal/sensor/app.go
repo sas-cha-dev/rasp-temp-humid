@@ -1,7 +1,6 @@
 package sensor
 
 import (
-	"BeRoHuTe/internal/repository"
 	"context"
 	"log"
 	"time"
@@ -9,13 +8,13 @@ import (
 
 type DHTApp struct {
 	service        Service
-	repo           *repository.SensorRepository
+	repo           *Repository
 	stop           chan bool
 	lastTimestamps map[int]time.Time
 	interval       time.Duration
 }
 
-func NewSensorService(readInterval time.Duration, sensorService Service, repo *repository.SensorRepository) *DHTApp {
+func NewApp(readInterval time.Duration, sensorService Service, repo *Repository) *DHTApp {
 	return &DHTApp{
 		service:        sensorService,
 		repo:           repo,

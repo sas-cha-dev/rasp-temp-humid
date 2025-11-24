@@ -1,25 +1,14 @@
-package repository
+package weather
 
 import (
+	"BeRoHuTe/internal/contracts"
 	"database/sql"
 	"log"
-	"time"
 )
 
-type WeatherData struct {
-	ID          int       `json:"id"`
-	Name        string    `json:"name"`
-	Time        time.Time `json:"created_at"`
-	Latitude    float32   `json:"latitude"`
-	Longitude   float32   `json:"longitude"`
-	Temperature float32   `json:"temperature"`
-	Humidity    float32   `json:"humidity"`
-	FeelsLike   float32   `json:"feels_like"`
-}
-
 type WeatherRepository interface {
-	Save(weather WeatherData) error
-	GetLatest() ([]*WeatherData, error)
+	Save(weather contracts.WeatherData) error
+	GetLatest() ([]*contracts.WeatherData, error)
 }
 
 type weatherRepository struct {
@@ -53,13 +42,13 @@ func (w *weatherRepository) createTable() error {
 	return err
 }
 
-func (w *weatherRepository) Save(weather WeatherData) error {
+func (w *weatherRepository) Save(weather contracts.WeatherData) error {
 	query := `INSERT INTO weather_data (time, name, latitude, longitude, temperature, humidity, feels_like) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	_, err := w.db.Exec(query, weather.Time, weather.Name, weather.Latitude, weather.Longitude, weather.Temperature, weather.Humidity, weather.FeelsLike)
 	return err
 }
 
-func (w *weatherRepository) GetLatest() ([]*WeatherData, error) {
+func (w *weatherRepository) GetLatest() ([]*contracts.WeatherData, error) {
 	query := `SELECT id, time, name, latitude, longitude, temperature,humidity,feels_like FROM weather_data ORDER BY time DESC LIMIT 1`
 	rows, err := w.db.Query(query)
 	if err != nil {
@@ -70,16 +59,16 @@ func (w *weatherRepository) GetLatest() ([]*WeatherData, error) {
 	return w.queryReadings(query)
 }
 
-func (w *weatherRepository) queryReadings(query string, args ...interface{}) ([]*WeatherData, error) {
+func (w *weatherRepository) queryReadings(query string, args ...interface{}) ([]*contracts.WeatherData, error) {
 	rows, err := w.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var data []*WeatherData
+	var data []*contracts.WeatherData
 	for rows.Next() {
-		var datum WeatherData
+		var datum contracts.WeatherData
 		err := rows.Scan(&datum.ID, &datum.Time, &datum.Name, &datum.Latitude, &datum.Longitude, &datum.Temperature, &datum.Humidity, &datum.FeelsLike)
 		if err != nil {
 			return nil, err

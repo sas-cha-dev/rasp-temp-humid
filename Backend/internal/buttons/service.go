@@ -1,4 +1,4 @@
-package sensor
+package buttons
 
 import (
 	"context"
@@ -18,7 +18,7 @@ const (
 
 var allBtnStates = []ButtonState{ButtonStateOpen, ButtonStateClosed}
 
-type ButtonService interface {
+type Service interface {
 	Start(ctx context.Context, dur time.Duration)
 	GetCurrentState() (ButtonState, error)
 	OnPush(fn func(state ButtonState) error)
@@ -26,7 +26,7 @@ type ButtonService interface {
 	Close() error
 }
 
-type DummyButtonService struct {
+type DummyService struct {
 	gpioPin      int
 	onPush       []func(state ButtonState) error
 	onRelease    []func(state ButtonState) error
@@ -38,9 +38,9 @@ type DummyButtonService struct {
 	wg     sync.WaitGroup
 }
 
-func NewDummyButtonService(gpioPin int) ButtonService {
+func NewDummyService(gpioPin int) Service {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &DummyButtonService{
+	return &DummyService{
 		gpioPin:      gpioPin,
 		onPush:       make([]func(state ButtonState) error, 0),
 		onRelease:    make([]func(state ButtonState) error, 0),
@@ -51,12 +51,12 @@ func NewDummyButtonService(gpioPin int) ButtonService {
 }
 
 // Start begins listening to button state changes
-func (s *DummyButtonService) Start(ctx context.Context, dur time.Duration) {
+func (s *DummyService) Start(ctx context.Context, dur time.Duration) {
 	s.wg.Add(1)
 	go s.listenToButton(dur)
 }
 
-func (s *DummyButtonService) listenToButton(rate time.Duration) {
+func (s *DummyService) listenToButton(rate time.Duration) {
 	defer s.wg.Done()
 
 	ticker := time.NewTicker(rate)
@@ -85,13 +85,13 @@ func (s *DummyButtonService) listenToButton(rate time.Duration) {
 	}
 }
 
-func (s *DummyButtonService) readState() (ButtonState, error) {
+func (s *DummyService) readState() (ButtonState, error) {
 	// Simulate reading from GPIO pin
 	ran := rand.IntN(2)
 	return allBtnStates[ran], nil
 }
 
-func (s *DummyButtonService) handleStateChange(oldState, newState ButtonState) {
+func (s *DummyService) handleStateChange(oldState, newState ButtonState) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -114,20 +114,20 @@ func (s *DummyButtonService) handleStateChange(oldState, newState ButtonState) {
 	}
 }
 
-func (s *DummyButtonService) Close() error {
+func (s *DummyService) Close() error {
 	s.cancel()  // Signal goroutine to stop
 	s.wg.Wait() // Wait for goroutine to finish
 	return nil
 }
 
-func (s *DummyButtonService) GetCurrentState() (ButtonState, error) {
+func (s *DummyService) GetCurrentState() (ButtonState, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	return s.currentState, nil
 }
 
-func (s *DummyButtonService) OnPush(fn func(state ButtonState) error) {
+func (s *DummyService) OnPush(fn func(state ButtonState) error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -135,7 +135,7 @@ func (s *DummyButtonService) OnPush(fn func(state ButtonState) error) {
 	return
 }
 
-func (s *DummyButtonService) OnRelease(fn func(state ButtonState) error) {
+func (s *DummyService) OnRelease(fn func(state ButtonState) error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
