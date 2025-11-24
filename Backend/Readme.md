@@ -1,159 +1,135 @@
-# Temperature & Humidity Logger
+# Raspberry Pi Monitoring System
 
-A Go-based temperature, humidity, button push monitoring system for Raspberry Pi with DHT22 sensors.
+A **Go-based** monitoring system for temperature, humidity, button inputs, and weather data running on a Raspberry Pi.
 
-The code is mainly build by claude.ai to get the system up fast and running. Some adjustments were made.
+The initial code was generated in a claude.ai chat to quickly get the system up and running, although not much of the 
+original code remains.
 
-## Project Structure
+My setup uses a **Raspberry Pi 3** running **Debian GNU/Linux 13 (trixie)**.
 
-```
-temp-humidity-logger/
-├── cmd/
-│   └── server/
-│       └── main.go              # Main application entry point
-├── internal/
-│   ├── sensor/
-│   │   ├── sensor.go            # Sensor interface
-│   │   └── dummy.go             # Dummy implementation (for testing)
-│   ├── repository/
-│   │   └── sqlite.go            # SQLite database layer
-│   └── handler/
-│       └── handler.go           # HTTP handlers
-├── web/
-│   └── index.html               # Dashboard UI
-├── go.mod
-├── .env                         # Environment configuration
-└── README.md
-```
+Two **DHT22** sensors are connected to the GPIO pins **GPIO 22 (pin 15)** and **GPIO 23 (pin 16)**. 
+They communicate via a one-wire interface, which may need to be enabled on the Raspberry Pi beforehand.
 
-## Features
+To read sensor values, a small **Python script** is used, since reading DHT22 data directly from Go can be challenging. 
+The script reads values every **4 seconds** (minimum interval: **2 seconds**) and writes them to a **Redis** database 
+using the keys `sensor1` and `sensor2`.
 
-- ✅ Abstract sensor interface with dummy implementation
-- ✅ Dummy service returns values that change every second (sine wave simulation)
-- ✅ SQLite database with repository pattern
-- ✅ Configurable reading interval via environment variable
-- ✅ Dashboard displaying:
-    - Latest readings from both sensors with timestamp
-    - Average values for last hour, today, and this week
-    - Table of last 100 readings
-- ✅ Auto-refreshing UI (every 30 seconds)
+The script can be run persistently using `systemctl` and a corresponding service definition.
 
-## Setup
+A button is used to represent a ventilation event. The button is read inside the Go application using the **rpio** library.
 
-### 1. Install Dependencies
+Additionally, weather data (temperature and humidity) is fetched from **OpenWeather**.
 
-```bash
-go mod download
-```
+Each module—DHT sensors, button, and weather—is independent. All collected data is logged into a **SQLite** database.
 
-### 2. Configure Environment
+I hope this project is helpful to others. If you make improvements, feel free to share them! For new features, it would 
+be great if they can be enabled via environment variables or command-line parameters.
 
-Edit the `.env` file or set environment variables:
+---
 
-```bash
-READ_INTERVAL=10    # Read sensors every 10 seconds
-DB_PATH=./data.db   # Database file path
-PORT=8080           # HTTP server port
-TEMPLATE_DIR=./web  # Template directory
-```
+## Table of Contents
 
-### 3. Run the Server
+* [Environment Variables](#environment-variables)
+* [API Endpoints](#api-endpoints)
+* [Development Environment](#development-environment)
+* [Troubleshooting](#troubleshooting)
+* [Example `.env`](#example-env)
+* [Example systemd Service](#example-systemd-service)
 
-```bash
-# Load environment variables and run
-source .env
-go run cmd/server/main.go
-```
+---
 
-Or build and run:
+## Environment Variables
 
-```bash
-go build -o temp-logger cmd/server/main.go
-./temp-logger
-```
+| Variable                    | Description                                                            |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `READ_INTERVAL`             | Interval in seconds for reading the DHT sensors                        |
+| `DB_PATH`                   | Path to the SQLite database (may be relative to the executable)        |
+| `PORT`                      | Port for the web server                                                |
+| `TEMPLATE_DIR`              | Directory containing the HTML templates                                |
+| `WEATHER_READ_INTERVAL_MIN` | Interval in minutes for requesting data from OpenWeather               |
+| `OPEN_WEATHER_API_KEY`      | API key for the OpenWeather OneCall endpoint                           |
+| `LOCATION_COORDS`           | Latitude and longitude for the OpenWeather request (format: `lat,lon`) |
 
-### 4. Access Dashboard
-
-Open your browser and navigate to:
-```
-http://localhost:8080
-```
+---
 
 ## API Endpoints
 
-- `GET /` - Main dashboard (HTML)
-- `GET /api/data` - JSON API endpoint with all data
+* **GET /** — Main dashboard (HTML)
+* **GET /api/data** — JSON API endpoint containing all collected data
 
-## Dummy Sensor Behavior
+---
 
-The dummy sensor simulates realistic temperature and humidity readings:
+## Development Environment
 
-- **Sensor 1**: Temperature oscillates between 20-24°C, Humidity between 45-55%
-- **Sensor 2**: Temperature oscillates between 19-23°C, Humidity between 50-60%
-- Values change based on sine/cosine waves over time
-- Updates continuously as the application runs
+To avoid developing directly on the Raspberry Pi, the project includes separate entry points (see `/cmd/`) as well as 
+dummy services for the DHT sensors and the button. These mock services behave randomly to simulate real-world input.
 
-## Database Schema
-
-```sql
-CREATE TABLE readings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sensor_id INTEGER NOT NULL,
-    temperature REAL NOT NULL,
-    humidity REAL NOT NULL,
-    timestamp DATETIME NOT NULL
-);
-```
-
-## OneDrive Backup
-
-For OneDrive backup, you can use `rclone`:
-
-```bash
-# Install rclone
-curl https://rclone.org/install.sh | sudo bash
-
-# Configure OneDrive
-rclone config
-
-# Create a backup script
-cat > backup.sh << 'EOF'
-#!/bin/bash
-rclone copy ./data.db onedrive:temp-humidity-backup/
-EOF
-
-chmod +x backup.sh
-
-# Add to crontab (daily backup at 2 AM)
-crontab -e
-# Add: 0 2 * * * /path/to/backup.sh
-```
-
-## Development
-
-### Running Tests
-
-```bash
-go test ./...
-```
-
-### Viewing Logs
-
-The application logs sensor readings and any errors to stdout:
-
-```
-2024-11-17 15:04:23 Saved: Sensor 1 - Temp: 22.5°C, Humidity: 52.3%, Time: 15:04:23
-2024-11-17 15:04:23 Saved: Sensor 2 - Temp: 21.8°C, Humidity: 56.1%, Time: 15:04:23
-```
+---
 
 ## Troubleshooting
 
-**Database locked error**: Make sure only one instance is running
+**Database locked error**
 
-**No data showing**: Wait for the first reading interval to pass (default 10 seconds)
+Make sure that only a single instance of the application is running.
 
-**Port already in use**: Change the `PORT` environment variable
+**Port already in use**
 
-## License
+Change the `PORT` environment variable to an available port.
 
-MIT
+---
+
+## Example `.env`
+
+```env
+# Read interval in seconds for DHT sensors (default: 4)
+READ_INTERVAL=4
+
+# SQLite DB path
+DB_PATH=./data/sensor_data.db
+
+# Web server port
+PORT=8080
+
+# HTML templates directory
+TEMPLATE_DIR=./templates
+
+# Weather polling interval (minutes)
+WEATHER_READ_INTERVAL_MIN=15
+
+# OpenWeather API key and coordinates
+OPEN_WEATHER_API_KEY=your_api_key_here
+LOCATION_COORDS=48.1371,11.5754
+```
+
+---
+
+## Example systemd Service
+
+Create a systemd file (e.g. `/etc/systemd/system/dht-reader.service`) for the Python sensor reader:
+
+```ini
+[Unit]
+Description=DHT22 Sensors to Redis
+After=network.target redis.service
+
+[Service]
+Type=simple
+User=<username>
+WorkingDirectory=/repo/SensorsPython
+ExecStart=/repo/SensorsPython/env/bin/python /repo/SensorsPython/dht22.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start with:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable dht-reader.service
+sudo systemctl start dht-reader.service
+```
+
+---
