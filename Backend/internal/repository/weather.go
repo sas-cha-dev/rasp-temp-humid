@@ -60,7 +60,7 @@ func (w *weatherRepository) Save(weather WeatherData) error {
 }
 
 func (w *weatherRepository) GetLatest() ([]*WeatherData, error) {
-	query := `SELECT * FROM weather_data ORDER BY time DESC LIMIT 1`
+	query := `SELECT id, time, name, latitude, longitude, temperature,humidity,feels_like FROM weather_data ORDER BY time DESC LIMIT 1`
 	rows, err := w.db.Query(query)
 	if err != nil {
 		log.Fatal(err)
@@ -80,7 +80,7 @@ func (w *weatherRepository) queryReadings(query string, args ...interface{}) ([]
 	var data []*WeatherData
 	for rows.Next() {
 		var datum WeatherData
-		err := rows.Scan(&datum.ID, &datum.Time, &datum.Latitude, &datum.Longitude, &datum.Temperature, &datum.Humidity, &datum.FeelsLike)
+		err := rows.Scan(&datum.ID, &datum.Time, &datum.Name, &datum.Latitude, &datum.Longitude, &datum.Temperature, &datum.Humidity, &datum.FeelsLike)
 		if err != nil {
 			return nil, err
 		}

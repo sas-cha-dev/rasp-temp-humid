@@ -18,30 +18,34 @@ type Repository interface {
 }
 
 type Handler struct {
-	repo     Repository
-	btnRepo  repository.ButtonRepository
-	indexTpl *template.Template
+	repo        Repository
+	btnRepo     repository.ButtonRepository
+	indexTpl    *template.Template
+	weatherRepo repository.WeatherRepository
 }
 
 type DashboardData struct {
-	Latest           []*repository.Reading
-	LastHour         map[int]map[string]float64
-	Today            map[int]map[string]float64
-	ThisWeek         map[int]map[string]float64
-	Last100          []*repository.Reading
-	LastButtonPushes []*repository.ButtonReading
+	Latest            []*repository.Reading
+	LastHour          map[int]map[string]float64
+	Today             map[int]map[string]float64
+	ThisWeek          map[int]map[string]float64
+	Last100           []*repository.Reading
+	LastButtonPushes  []*repository.ButtonReading
+	LatestWeatherData []*repository.WeatherData
 }
 
-func New(repo Repository, templateDir string, btnRepo repository.ButtonRepository) (*Handler, error) {
+func New(repo Repository, templateDir string, btnRepo repository.ButtonRepository,
+	weatherRepo repository.WeatherRepository) (*Handler, error) {
 	tpl, err := template.ParseFiles(filepath.Join(templateDir, "index.html"))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Handler{
-		repo:     repo,
-		indexTpl: tpl,
-		btnRepo:  btnRepo,
+		repo:        repo,
+		indexTpl:    tpl,
+		btnRepo:     btnRepo,
+		weatherRepo: weatherRepo,
 	}, nil
 }
 
@@ -79,13 +83,19 @@ func (h *Handler) ServeIndex(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error getting last open windows: %v", err)
 	}
 
+	lastWeatherData, err := h.weatherRepo.GetLatest()
+	if err != nil {
+		log.Printf("Error getting last weather data: %v", err)
+	}
+
 	data := DashboardData{
-		Latest:           latest,
-		LastHour:         lastHour,
-		Today:            today,
-		ThisWeek:         thisWeek,
-		Last100:          last100,
-		LastButtonPushes: lastOpenWindows,
+		Latest:            latest,
+		LastHour:          lastHour,
+		Today:             today,
+		ThisWeek:          thisWeek,
+		Last100:           last100,
+		LastButtonPushes:  lastOpenWindows,
+		LatestWeatherData: lastWeatherData,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -108,14 +118,16 @@ func (h *Handler) ServeAPI(w http.ResponseWriter, r *http.Request) {
 	thisWeek, _ := h.repo.GetAverageThisWeek()
 	last100, _ := h.repo.GetLastN(100)
 	lastOpenWindows, _ := h.btnRepo.GetLatest()
+	lastWeatherData, _ := h.weatherRepo.GetLatest()
 
 	data := DashboardData{
-		Latest:           latest,
-		LastHour:         lastHour,
-		Today:            today,
-		ThisWeek:         thisWeek,
-		Last100:          last100,
-		LastButtonPushes: lastOpenWindows,
+		Latest:            latest,
+		LastHour:          lastHour,
+		Today:             today,
+		ThisWeek:          thisWeek,
+		Last100:           last100,
+		LastButtonPushes:  lastOpenWindows,
+		LatestWeatherData: lastWeatherData,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

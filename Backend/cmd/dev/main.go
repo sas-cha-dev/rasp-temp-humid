@@ -102,7 +102,7 @@ func main() {
 	defer weatherApp.Stop()
 
 	// Initialize HTTP handler
-	h, err := handler.New(repo, templateDir, btnRepo)
+	h, err := handler.New(repo, templateDir, btnRepo, weatherRepo)
 	if err != nil {
 		log.Fatalf("Failed to initialize handler: %v", err)
 	}
