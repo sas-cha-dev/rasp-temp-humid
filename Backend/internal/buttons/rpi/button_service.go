@@ -21,17 +21,12 @@ type ButtonService struct {
 	onReleaseFns []func(state buttons.ButtonState) error
 }
 
-func NewButtonService(pin int) (buttons.Service, error) {
-	if err := rpio.Open(); err != nil {
-		return nil, err
-	}
-
+func NewButtonService(pin int) buttons.Service {
 	if pin == 0 {
 		pin = 24
 	}
 
 	rpin := rpio.Pin(pin)
-	rpin.Input()
 
 	return &ButtonService{
 		pin:          rpin,
@@ -39,7 +34,7 @@ func NewButtonService(pin int) (buttons.Service, error) {
 		pinState:     buttons.ButtonStateUnknown,
 		onPushFns:    make([]func(state buttons.ButtonState) error, 0),
 		onReleaseFns: make([]func(state buttons.ButtonState) error, 0),
-	}, nil
+	}
 }
 
 func (b *ButtonService) GetCurrentState() (buttons.ButtonState, error) {
@@ -61,12 +56,19 @@ func (b *ButtonService) OnRelease(fn func(state buttons.ButtonState) error) {
 	b.onReleaseFns = append(b.onReleaseFns, fn)
 }
 
-func (b *ButtonService) Start(ctx context.Context, dur time.Duration) {
+func (b *ButtonService) Start(ctx context.Context, dur time.Duration) error {
 	if b.start == true {
-		return
+		return nil
 	}
 
+	if err := rpio.Open(); err != nil {
+		return err
+	}
+
+	b.pin.Input()
+
 	b.start = true
+
 	ticker := time.NewTicker(dur)
 
 	b.stop = make(chan bool)
@@ -87,7 +89,7 @@ func (b *ButtonService) Start(ctx context.Context, dur time.Duration) {
 			}
 		}
 	}()
-	return
+	return nil
 }
 
 func (b *ButtonService) listenToEdge() error {

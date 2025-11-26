@@ -19,7 +19,7 @@ const (
 var allBtnStates = []ButtonState{ButtonStateOpen, ButtonStateClosed}
 
 type Service interface {
-	Start(ctx context.Context, dur time.Duration)
+	Start(ctx context.Context, dur time.Duration) error
 	GetCurrentState() (ButtonState, error)
 	OnPush(fn func(state ButtonState) error)
 	OnRelease(fn func(state ButtonState) error)
@@ -48,11 +48,11 @@ func NewDummyService(gpioPin int) Service {
 }
 
 // Start begins listening to button state changes
-func (s *DummyService) Start(ctx context.Context, dur time.Duration) {
+func (s *DummyService) Start(ctx context.Context, dur time.Duration) error {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.wg.Add(1)
 	go s.listenToButton(dur)
-	return
+	return nil
 }
 
 func (s *DummyService) listenToButton(rate time.Duration) {

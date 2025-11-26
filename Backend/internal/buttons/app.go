@@ -29,8 +29,7 @@ func (b *ButtonApp) Start(ctx context.Context) error {
 	b.service.OnPush(b.buttonPushed)
 	b.service.OnRelease(b.buttonReleased)
 
-	b.service.Start(ctx, 10*time.Second)
-	return nil
+	return b.service.Start(ctx, 10*time.Second)
 }
 
 func (b *ButtonApp) buttonPushed(_ ButtonState) error {
