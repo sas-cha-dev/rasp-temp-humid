@@ -46,7 +46,7 @@ func (r *Repository) GetInBetween(start time.Time, end time.Time) ([]*contracts.
 }
 
 func (r *Repository) Delete(id int64) error {
-	query := `DELETE FROM button_readings WHERE id = ?`
+	query := `DELETE FROM readings WHERE id = ?`
 	_, err := r.db.Exec(query, id)
 	return err
 }
