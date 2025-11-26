@@ -89,10 +89,7 @@ func main() {
 
 	// Initialize sensors
 	sensorService := sensor.NewDHTSensors(rdb)
-	btnService, err := rpi.NewButtonService(24)
-	if err != nil {
-		log.Fatalf("Failed to initialize button service: %v", err)
-	}
+	btnService := rpi.NewButtonService(24)
 	weatherService := weather.NewOpenWeatherService(
 		openWeatherApiKey,
 		locationLat,
