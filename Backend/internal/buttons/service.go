@@ -23,7 +23,7 @@ type Service interface {
 	GetCurrentState() (ButtonState, error)
 	OnPush(fn func(state ButtonState) error)
 	OnRelease(fn func(state ButtonState) error)
-	Close() error
+	Stop() error
 }
 
 type DummyService struct {
@@ -39,21 +39,20 @@ type DummyService struct {
 }
 
 func NewDummyService(gpioPin int) Service {
-	ctx, cancel := context.WithCancel(context.Background())
 	return &DummyService{
 		gpioPin:      gpioPin,
 		onPush:       make([]func(state ButtonState) error, 0),
 		onRelease:    make([]func(state ButtonState) error, 0),
 		currentState: ButtonStateUnknown,
-		ctx:          ctx,
-		cancel:       cancel,
 	}
 }
 
 // Start begins listening to button state changes
 func (s *DummyService) Start(ctx context.Context, dur time.Duration) {
+	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.wg.Add(1)
 	go s.listenToButton(dur)
+	return
 }
 
 func (s *DummyService) listenToButton(rate time.Duration) {
@@ -114,9 +113,11 @@ func (s *DummyService) handleStateChange(oldState, newState ButtonState) {
 	}
 }
 
-func (s *DummyService) Close() error {
+func (s *DummyService) Stop() error {
 	s.cancel()  // Signal goroutine to stop
 	s.wg.Wait() // Wait for goroutine to finish
+	s.onPush = make([]func(state ButtonState) error, 0)
+	s.onRelease = make([]func(state ButtonState) error, 0)
 	return nil
 }
 

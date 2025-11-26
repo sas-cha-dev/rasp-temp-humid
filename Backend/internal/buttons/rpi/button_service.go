@@ -73,20 +73,21 @@ func (b *ButtonService) Start(ctx context.Context, dur time.Duration) {
 	go func() {
 		defer ticker.Stop()
 
-		for range ticker.C {
+		for {
 			select {
 			case <-b.stop:
 			case <-ctx.Done():
 				return
+			case <-ticker.C:
+				err := b.listenToEdge()
+				if err != nil {
+					log.Println("ButtonService error: ", err)
+				}
 			default:
-			}
-
-			err := b.listenToEdge()
-			if err != nil {
-				log.Println("ButtonService error: ", err)
 			}
 		}
 	}()
+	return
 }
 
 func (b *ButtonService) listenToEdge() error {
@@ -131,7 +132,9 @@ func (b *ButtonService) executeFns(push, release bool) {
 	}
 }
 
-func (b *ButtonService) Close() error {
+func (b *ButtonService) Stop() error {
+	b.onPushFns = make([]func(state buttons.ButtonState) error, 0)
+	b.onReleaseFns = make([]func(state buttons.ButtonState) error, 0)
 	b.start = false
 	return rpio.Close()
 }

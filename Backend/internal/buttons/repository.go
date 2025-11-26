@@ -9,6 +9,7 @@ import (
 type ButtonRepository interface {
 	Save(buttonID int, startAt time.Time, endAt time.Time) error
 	GetLatest() ([]*contracts.ButtonReading, error)
+	GetAll(offset int, limit int) ([]*contracts.ButtonReading, error)
 }
 
 type buttonRepository struct {
@@ -41,6 +42,11 @@ func (r *buttonRepository) createTable() error {
 		return err
 	}
 	return nil
+}
+
+func (r *buttonRepository) GetAll(offset int, limit int) ([]*contracts.ButtonReading, error) {
+	query := `SELECT * FROM button_readings ORDER BY id DESC LIMIT ? OFFSET ?`
+	return r.queryReadings(query, limit, offset)
 }
 
 func (r *buttonRepository) Save(buttonID int, startAt time.Time, endAt time.Time) error {

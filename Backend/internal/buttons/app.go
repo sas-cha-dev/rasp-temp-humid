@@ -62,3 +62,9 @@ func (b *ButtonApp) buttonReleased(_ ButtonState) error {
 	b.endsAt = time.Time{}
 	return nil
 }
+
+func (b *ButtonApp) Stop() error {
+	b.startsAt = time.Time{}
+	b.endsAt = time.Time{}
+	return b.service.Stop()
+}

@@ -40,25 +40,25 @@ func (a *App) Start(ctx context.Context, dur time.Duration) {
 			case <-a.stop:
 			case <-ctx.Done():
 				return
+			case <-ticker.C:
+				if errors > 5 { // wait a longer period
+					ticker.Reset(dur * 2)
+					log.Println("Weather app 'stopped' due to timeout")
+					continue
+				}
+
+				err := a.fetchAndStoreCurrentWeatherDetails()
+				if err != nil {
+					log.Println("WeatherApp error: ", err)
+					errors++
+					ticker.Reset(2 * time.Second)
+					continue
+				}
+
+				errors = 0
+				ticker.Reset(dur)
 			default:
 			}
-
-			if errors > 5 { // wait a longer period
-				ticker.Reset(dur * 2)
-				log.Println("Weather app 'stopped' due to timeout")
-				continue
-			}
-
-			err := a.fetchAndStoreCurrentWeatherDetails()
-			if err != nil {
-				log.Println("WeatherApp error: ", err)
-				errors++
-				ticker.Reset(2 * time.Second)
-				continue
-			}
-
-			errors = 0
-			ticker.Reset(dur)
 		}
 	}()
 }

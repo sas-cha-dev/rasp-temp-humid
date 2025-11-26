@@ -39,6 +39,18 @@ func (r *Repository) createTable() error {
 	return err
 }
 
+func (r *Repository) GetInBetween(start time.Time, end time.Time) ([]*contracts.SensorReading, error) {
+	query := `SELECT id, sensor_id, temperature, humidity, timestamp FROM readings 
+	WHERE timestamp >= ? AND timestamp <= ?`
+	return r.queryReadings(query, start, end)
+}
+
+func (r *Repository) Delete(id int64) error {
+	query := `DELETE FROM button_readings WHERE id = ?`
+	_, err := r.db.Exec(query, id)
+	return err
+}
+
 // Save stores a new reading
 func (r *Repository) Save(sensorID int, temperature, humidity float64, timestamp time.Time) error {
 	query := `INSERT INTO readings (sensor_id, temperature, humidity, timestamp) VALUES (?, ?, ?, ?)`

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"BeRoHuTe/cmd"
 	"BeRoHuTe/internal/buttons"
+	"BeRoHuTe/internal/data_clean"
 	"BeRoHuTe/internal/handler"
 	"BeRoHuTe/internal/sensor"
 	"BeRoHuTe/internal/weather"
@@ -32,6 +34,11 @@ func main() {
 	weatherReadInterval := util.GetEnvInt("WEATHER_READ_INTERVAL_MIN", 30) // in minutes
 	openWeatherApiKey := util.GetEnv("OPEN_WEATHER_API_KEY", "")
 	locationCoords := util.GetEnv("LOCATION_COORDS", "")
+
+	progArgs, err := cmd.GetProgramArgs()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var locationLon, locationLat float64
 	if strings.TrimSpace(locationCoords) != "" {
@@ -84,9 +91,8 @@ func main() {
 	ctx := context.Background()
 	defer ctx.Done()
 
-	// read dht sensors
 	dhtApp := sensor.NewApp(time.Duration(readInterval)*time.Second, sensorService, repo)
-	dhtApp.Start(ctx)
+	dhtApp.Start(ctx, true)
 	defer dhtApp.Stop()
 
 	btnApp, err := buttons.NewButtonApp(btnService, btnRepo)
@@ -100,6 +106,30 @@ func main() {
 	weatherApp := weather.NewApp(weatherService, weatherRepo)
 	weatherApp.Start(ctx, time.Duration(weatherReadInterval)*time.Minute)
 	defer weatherApp.Stop()
+
+	if progArgs.Cleanup {
+		dataCleanUp, err := data_clean.NewApp(btnRepo, repo,
+			data_clean.WithBeforeCleanUp(func() error {
+				dhtApp.Stop()
+				if err := btnApp.Stop(); err != nil {
+					return err
+				}
+				return nil
+			}),
+			data_clean.WithAfterCleanUp(func() error {
+				dhtApp.Start(ctx, false)
+				if err := btnApp.Start(ctx); err != nil {
+					return err
+				}
+				return nil
+			}),
+		)
+		if err != nil {
+			log.Fatalf("Failed to initialize data clean: %v", err)
+		}
+		dataCleanUp.Start(ctx, 24*time.Hour, true)
+		defer dataCleanUp.Stop()
+	}
 
 	// Initialize HTTP handler
 	h, err := handler.New(repo, templateDir, btnRepo, weatherRepo)

@@ -24,31 +24,33 @@ func NewApp(readInterval time.Duration, sensorService Service, repo *Repository)
 	}
 }
 
-func (sensorApp *DHTApp) Start(ctx context.Context) {
+func (sensorApp *DHTApp) Start(ctx context.Context, execDirectly bool) {
 	sensorApp.stop = make(chan bool)
-	ticker := time.NewTicker(1 * time.Millisecond) // call directly
+	startInterval := sensorApp.interval
+	if execDirectly {
+		startInterval = time.Millisecond
+	}
+	ticker := time.NewTicker(startInterval)
 	go func() {
 		defer ticker.Stop()
 
-		for range ticker.C {
+		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-sensorApp.stop:
 				return
+			case <-ticker.C:
+				sensorApp.performReading()
+				ticker.Reset(sensorApp.interval)
 			default:
 			}
-
-			sensorApp.performReading()
-
-			ticker.Reset(sensorApp.interval)
 		}
 	}()
 }
 
 func (sensorApp *DHTApp) performReading() {
 	readings, err := sensorApp.service.ReadAllSensors()
-	print(readings)
 	if err != nil {
 		log.Printf("Error reading sensors: %v", err)
 		return
