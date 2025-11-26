@@ -1,7 +1,7 @@
 package main
 
 import (
-	"BeRoHuTe/cmd"
+	"BeRoHuTe/config"
 	"BeRoHuTe/internal/buttons"
 	"BeRoHuTe/internal/buttons/rpi"
 	"BeRoHuTe/internal/data_clean"
@@ -37,7 +37,7 @@ func main() {
 	openWeatherApiKey := util.GetEnv("OPEN_WEATHER_API_KEY", "")
 	locationCoords := util.GetEnv("LOCATION_COORDS", "")
 
-	progArgs, err := cmd.GetProgramArgs()
+	progArgs, err := config.GetProgramArgs()
 	if err != nil {
 		log.Fatal(err)
 	}
