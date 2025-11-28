@@ -35,14 +35,14 @@ func (a *App) Start(ctx context.Context, dur time.Duration) {
 
 		errors := 0
 
-		for range ticker.C {
+		for {
 			select {
 			case <-a.stop:
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if errors > 5 { // wait a longer period
-					ticker.Reset(dur * 2)
+				if errors > 5 {
+					ticker.Reset(dur)
 					log.Println("Weather app 'stopped' due to timeout")
 					continue
 				}
