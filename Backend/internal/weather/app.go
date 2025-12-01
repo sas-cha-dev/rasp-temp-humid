@@ -43,7 +43,8 @@ func (a *App) Start(ctx context.Context, dur time.Duration) {
 			case <-ticker.C:
 				if errors > 5 {
 					ticker.Reset(dur)
-					log.Println("Weather app 'stopped' due to timeout")
+					log.Println("Weather app timeout")
+					errors = 0
 					continue
 				}
 
